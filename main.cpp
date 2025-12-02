@@ -1,3 +1,5 @@
+// FCFS Scheduling Algorithm (Aditya - Commit 1)
+
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -5,85 +7,100 @@
 using namespace std;
 
 struct Process {
-    int pid, arrival, burst, priority;
-    int start = -1, finish = -1;
-    int waiting = 0, turnaround = 0;
+    int pid;
+    int at;     // arrival time
+    int bt;     // burst time
+    int ct;     // completion time
+    int tat;    // turnaround time
+    int wt;     // waiting time
 };
 
 struct Gantt {
-    int pid, s, f;
+    int pid;
+    int start;
+    int end;
 };
 
-// ------------ PRINT RESULTS (DAY-1 ) -------------
-void print_results(const vector<Process> &procs, const vector<Gantt> &g) {
-
-    cout << "\nGantt Chart:\n";
-    for (auto &seg : g) {
-        if (seg.pid == 0)
-            cout << "[idle:" << seg.s << "->" << seg.f << "] ";
-        else
-            cout << "[P" << seg.pid << ":" << seg.s << "->" << seg.f << "] ";
-    }
-
-    cout << "\n\nFCFS Result Table:\n";
-    cout << "PID  Arrival  Burst  Start  Finish  Waiting  Turnaround\n";
-
-    for (auto &p : procs) {
-        cout << p.pid << "     "
-             << p.arrival << "        "
-             << p.burst << "      "
-             << p.start << "      "
-             << p.finish << "       "
-             << p.waiting << "         "
-             << p.turnaround << "\n";
-    }
-}
-
-// =================== FCFS IMPLEMENTATION =====================
-void fcfs(vector<Process> p) {
-
-    sort(p.begin(), p.end(), [](Process a, Process b) {
-        return a.arrival < b.arrival;
-    });
-
-    int time = 0;
-    vector<Gantt> g;
-
-    for (auto &x : p) {
-        if (time < x.arrival) {
-            g.push_back({0, time, x.arrival});
-            time = x.arrival;
-        }
-
-        x.start = time;
-        time += x.burst;
-        x.finish = time;
-
-        x.turnaround = x.finish - x.arrival;
-        x.waiting = x.start - x.arrival;
-
-        g.push_back({x.pid, x.start, x.finish});
-    }
-
-    print_results(p, g);
-}
-
-// ================= Main Function=================
 int main() {
-    int n;
 
+    int n;
     cout << "Number of Processes: ";
     cin >> n;
 
     vector<Process> p(n);
 
-    cout << "PID Arrival Burst Priority\n";
+    cout << "PID AT BT\n";
     for (int i = 0; i < n; i++) {
-        cin >> p[i].pid >> p[i].arrival >> p[i].burst >> p[i].priority;
+        cin >> p[i].pid >> p[i].at >> p[i].bt;
     }
 
-    cout << "\nRunning FCFS Scheduling...\n";
-    fcfs(p);
+    // sort by arrival time (FCFS rule)
+    sort(p.begin(), p.end(), [](auto &a, auto &b){
+        return a.at < b.at;
+    });
+
+    int time = 0;
+    vector<Gantt> gc;
+
+    for (auto &x : p) {
+
+        // CPU idle → wait until process arrives
+        if (time < x.at) {
+            gc.push_back({0, time, x.at}); // idle
+            time = x.at;
+        }
+
+        int st = time;
+        time += x.bt;
+        int ft = time;
+
+        x.ct  = ft;
+        x.tat = x.ct - x.at;
+        x.wt  = x.tat - x.bt;
+
+        gc.push_back({x.pid, st, ft});
+    }
+
+    // ---------------- GANTT CHART ----------------
+    cout << "\nGantt Chart:\n";
+    for (auto &g : gc) {
+        if (g.pid == 0)
+            cout << "[idle " << g.start << "-" << g.end << "] ";
+        else
+            cout << "[P" << g.pid << " " << g.start << "-" << g.end << "] ";
+    }
+    cout << "\n";
+
+    // ---------------- CLOSED BORDER TABLE ----------------
+    cout << "\n+--------------------------------------------+\n";
+    cout << "| " << left << setw(6) << "PID"
+         << setw(7) << "AT"
+         << setw(7) << "BT"
+         << setw(7) << "CT"
+         << setw(8) << "TAT"
+         << setw(7) << "WT" << " |\n";
+    cout << "+--------------------------------------------+\n";
+
+    double avg_tat = 0, avg_wt = 0;
+
+    for (auto &x : p) {
+        cout << "| "
+             << left << setw(6) << x.pid
+             << setw(7) << x.at
+             << setw(7) << x.bt
+             << setw(7) << x.ct
+             << setw(8) << x.tat
+             << setw(7) << x.wt
+             << " |\n";
+
+        avg_tat += x.tat;
+        avg_wt  += x.wt;
+    }
+
+    cout << "+--------------------------------------------+\n";
+    
+    cout << "Average Turnaround Time : " << avg_tat / n << endl;
+    cout << "Average Waiting Time    : " << avg_wt  / n << endl;
 
     return 0;
 }
