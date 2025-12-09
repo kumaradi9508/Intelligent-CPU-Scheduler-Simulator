@@ -95,13 +95,13 @@ Number of Processes: 4
 
 PID  AT  BT  Priority
 
-1    0   5   2
+1    0   5    2
 
-2    1   3   1
+2    1   3    1
 
-3    2   8   3
+3    2   8    3
 
-4    3   6   2
+4    3   6    2
 
 For Round Robin:
 
@@ -139,11 +139,11 @@ Program Flow
 
 6. View:
 
-  .Gantt Chart
+    . Gantt Chart
 
-  .Execution table
+    . Execution table
 
-  .Export as PNG
+    . Export as PNG
 
 📸 Output Screenshots
 
