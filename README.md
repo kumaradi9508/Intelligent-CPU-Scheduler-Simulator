@@ -51,6 +51,7 @@ Each algorithm generates:
 
 ✔ Average TAT & WT
 
+
 🖥️ Project Structure
 
 /
@@ -178,45 +179,45 @@ Frontend Visualizer Outputs
 
 Aditya
 
-. Implemented all scheduling algorithms in C++
+ . Implemented all scheduling algorithms in C++
 
-. Integrated menu-driven CLI
+ . Integrated menu-driven CLI
 
-. Added complete backend logic
+ . Added complete backend logic
 
-. Generated all CLI outputs
+ . Generated all CLI outputs
 
-. Assisted in documentation & analysis
+ . Assisted in documentation & analysis
 
 Sahil
 
-. Developed the entire frontend UI
+ . Developed the entire frontend UI
 
-. Built table editor, Gantt chart visualizer, Export functionality
+ . Built table editor, Gantt chart visualizer, Export functionality
 
-. Added frontend outputs
+ . Added frontend outputs
 
-. Managed UI/UX and JavaScript logic
+ . Managed UI/UX and JavaScript logic
 
 📚 Future Enhancements
 
-. Add multi-CPU support
+  . Add multi-CPU support
 
-. Add I/O burst simulation
+  . Add I/O burst simulation
 
-. Add comparison dashboard
+  . Add comparison dashboard
 
-. Add CSV export for reports
+  . Add CSV export for reports
 
 ✅ Status
 
-✔ Project Completed
+ ✔ Project Completed
 
-✔ CLI + Frontend tested
+ ✔ CLI + Frontend tested
 
-✔ Screenshots collected
+ ✔ Screenshots collected
 
-✔ Ready for submission
+ ✔ Ready for submission
 
 🎓 Thank You!
 
