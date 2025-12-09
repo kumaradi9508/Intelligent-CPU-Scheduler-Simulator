@@ -170,7 +170,7 @@ Frontend Visualizer Outputs
   ![frontend_srtf](https://github.com/user-attachments/assets/192a0d66-d3cc-4ce6-a2ba-48218ed062a3)
 
 
- .Round Robinn
+ .Round Robin
 
   ![frontend_rr](https://github.com/user-attachments/assets/0a8e0fc4-1bc8-426f-b8b4-a364dd5ee889)
 
