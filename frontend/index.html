@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>CPU Scheduling Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .gantt-bar {
+      height: 36px;
+      border-radius: 8px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-weight:600;
+      transition: width 600ms cubic-bezier(.2,.9,.3,1), transform 300ms;
+      white-space:nowrap;
+      padding:0 6px;
+    }
+    .gantt-track {
+      background: rgba(0,0,0,0.06);
+      border-radius:8px;
+      padding:8px;
+      min-height:56px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      overflow:auto;
+    }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
+    .gantt-bar:hover { transform: translateY(-6px) scale(1.03); box-shadow: 0 10px 20px rgba(2,6,23,0.12); }
+    .stat-card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0)); padding:12px; border-radius:10px; }
+  </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+  <div class="max-w-7xl mx-auto p-6">
+    <header class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold">CPU Scheduling Simulator</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Algorithms implemented in JavaScript for instant use.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="themeToggle" class="px-3 py-2 bg-white/80 dark:bg-slate-800 rounded shadow">Toggle Theme</button>
+        <a id="downloadBtn" class="px-3 py-2 bg-indigo-600 text-white rounded shadow cursor-pointer">Export CSV</a>
+      </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <section class="lg:col-span-1 bg-white dark:bg-slate-800 p-4 rounded shadow">
+        <h2 class="font-semibold mb-2">Input / Settings</h2>
+
+        <label class="block text-sm mb-1">Algorithm</label>
+        <select id="algorithm" class="w-full p-2 rounded mb-3 bg-slate-50 dark:bg-slate-700">
+          <option value="fcfs">FCFS</option>
+          <option value="sjf-np">SJF (Non-Preemptive)</option>
+          <option value="srtf">SRTF</option>
+          <option value="priority-np">Priority (Non-Preemptive)</option>
+          <option value="priority-p">Priority (Preemptive)</option>
+          <option value="rr">Round Robin</option>
+        </select>
+
+        <div id="quantumWrap" class="hidden mb-3">
+          <label class="block text-sm mb-1">Time Quantum</label>
+          <input id="quantum" type="number" min="1" value="2" class="w-full p-2 rounded bg-slate-50 dark:bg-slate-700"/>
+        </div>
+
+        <div class="flex gap-2 mb-3">
+          <button id="addRow" class="flex-1 px-3 py-2 bg-emerald-500 text-white rounded">Add Process</button>
+          <button id="resetRows" class="flex-1 px-3 py-2 bg-red-500 text-white rounded">Reset</button>
+        </div>
+
+        <div class="overflow-auto max-h-56 mb-3">
+          <table class="w-full text-sm mono">
+            <thead><tr class="text-left text-slate-600 dark:text-slate-300"><th>PID</th><th>AT</th><th>BT</th><th>PR</th><th></th></tr></thead>
+            <tbody id="procBody"></tbody>
+          </table>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="runBtn" class="flex-1 bg-indigo-600 text-white px-3 py-2 rounded">Run</button>
+          <button id="sampleBtn" class="flex-1 bg-slate-200 dark:bg-slate-700 rounded">Load Sample</button>
+        </div>
+      </section>
+
+      <section class="lg:col-span-2 bg-white dark:bg-slate-800 p-4 rounded shadow">
+        <div class="flex justify-between items-start">
+          <h2 class="font-semibold">Results</h2>
+          <div class="text-sm text-slate-400">Author: Aditya & Sahil</div>
+        </div>
+
+        <div id="ganttArea" class="mt-3 gantt-track"></div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="stat-card">
+            <div class="text-xs text-slate-500">Average Turnaround Time</div>
+            <div id="avgTAT" class="text-xl font-bold">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-xs text-slate-500">Average Waiting Time</div>
+            <div id="avgWT" class="text-xl font-bold">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-xs text-slate-500">CPU Utilization</div>
+            <div id="cpuUtil" class="text-xl font-bold">-</div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <canvas id="statsChart" height="100"></canvas>
+        </div>
+
+        <div id="tableArea" class="mt-4 overflow-auto"></div>
+
+        <div class="mt-4 flex gap-2">
+          <button id="copyOutput" class="px-3 py-2 rounded bg-amber-500">Copy Output</button>
+          <button id="clearOutput" class="px-3 py-2 rounded bg-slate-200 dark:bg-slate-700">Clear</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Helpers
+    const $ = s => document.querySelector(s);
+    const procBody = $('#procBody');
+    let idCounter = 1;
+
+    // UI: Add/Reset rows
+    function addRow(pid='', at=0, bt=1, pr=1) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="w-12 p-1 rounded bg-slate-50 dark:bg-slate-700" value="${pid || idCounter++}"></td>
+        <td><input class="w-16 p-1 rounded bg-slate-50 dark:bg-slate-700" value="${at}"></td>
+        <td><input class="w-16 p-1 rounded bg-slate-50 dark:bg-slate-700" value="${bt}"></td>
+        <td><input class="w-12 p-1 rounded bg-slate-50 dark:bg-slate-700" value="${pr}"></td>
+        <td><button class="removeBtn text-red-500">Remove</button></td>
+      `;
+      procBody.appendChild(tr);
+      tr.querySelector('.removeBtn').addEventListener('click', ()=> tr.remove());
+    }
+    $('#addRow').addEventListener('click', ()=> addRow());
+    $('#resetRows').addEventListener('click', ()=> { procBody.innerHTML = ''; idCounter = 1; });
+
+    $('#algorithm').addEventListener('change', (e) => {
+      $('#quantumWrap').classList.toggle('hidden', e.target.value !== 'rr');
+    });
+
+    $('#sampleBtn').addEventListener('click', ()=> {
+      procBody.innerHTML=''; idCounter=1;
+      addRow(1,0,5,2); addRow(2,1,3,1); addRow(3,2,8,3); addRow(4,3,6,2);
+    });
+
+    function parseTable() {
+      return Array.from(procBody.querySelectorAll('tr')).map(r => {
+        const t = r.querySelectorAll('input');
+        return { pid: Number(t[0].value), at: Number(t[1].value), bt: Number(t[2].value), pr: Number(t[3].value) };
+      });
+    }
+
+    // Chart
+    let statsChart = null;
+    function drawChart(labels, tatSeries, wtSeries) {
+      const ctx = document.getElementById('statsChart');
+      if (statsChart) statsChart.destroy();
+      statsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Turnaround Time', data: tatSeries },
+            { label: 'Waiting Time', data: wtSeries }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: { x: { stacked: false }, y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    // Gantt & Table renderers
+    function renderGantt(segments) {
+      const area = $('#ganttArea');
+      area.innerHTML = '';
+      if (!segments || segments.length === 0) return;
+      const start = Math.min(...segments.map(s=>s.start));
+      const end = Math.max(...segments.map(s=>s.end));
+      const total = Math.max(1, end - start);
+
+      segments.forEach((s,i) => {
+        const widthPercent = Math.max(2, ((s.end - s.start) / total) * 100);
+        const div = document.createElement('div');
+        div.className = 'gantt-bar';
+        div.style.width = '0%';
+        div.style.background = ['#0ea5e9','#f97316','#10b981','#8b5cf6','#ef4444','#06b6d4'][i%6];
+        div.textContent = `P${s.pid} ${s.start}-${s.end}`;
+        div.title = `P${s.pid}: ${s.start} → ${s.end}`;
+        area.appendChild(div);
+        requestAnimationFrame(()=> div.style.width = widthPercent + '%');
+      });
+    }
+
+    function renderTable(procs) {
+      const tableArea = $('#tableArea');
+      tableArea.innerHTML = '';
+      const table = document.createElement('table');
+      table.className = 'w-full mono';
+      table.innerHTML = `<thead class="text-left text-slate-600 dark:text-slate-300"><tr><th>PID</th><th>AT</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th></tr></thead>`;
+      const tbody = document.createElement('tbody');
+      procs.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.pid}</td><td>${p.at}</td><td>${p.bt}</td><td>${p.ct}</td><td>${p.tat}</td><td>${p.wt}</td>`;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      tableArea.appendChild(table);
+    }
+
+    // Algorithms (JS implementations)
+    function fcfs(procs) {
+      procs.sort((a,b)=> a.at - b.at);
+      let time = 0; const gc=[];
+      procs.forEach(p=>{
+        if (time < p.at) { gc.push({pid:0,start:time,end:p.at}); time = p.at; }
+        const st = time; time += p.bt; const ft = time;
+        p.ct = ft; p.tat = p.ct - p.at; p.wt = p.tat - p.bt;
+        gc.push({pid:p.pid,start:st,end:ft});
+      });
+      return {procs,gc};
+    }
+
+    function sjf_np(procs) {
+      let time = 0, completed = 0; const n = procs.length; const done = new Array(n).fill(false); const gc=[];
+      while (completed < n) {
+        let idx=-1, mn=1e9;
+        for (let i=0;i<n;i++) if (!done[i] && procs[i].at<=time) { if (procs[i].bt < mn) { mn=procs[i].bt; idx=i; } }
+        if (idx==-1) { time++; continue; }
+        const st=time; time+=procs[idx].bt; const ft=time;
+        procs[idx].ct=ft; procs[idx].tat=procs[idx].ct - procs[idx].at; procs[idx].wt = procs[idx].tat - procs[idx].bt; done[idx]=true; completed++; gc.push({pid:procs[idx].pid,start:st,end:ft});
+      }
+      return {procs,gc};
+    }
+
+    function srtf(procs) {
+      const n=procs.length; procs.forEach(p=>p.rem=p.bt);
+      let time=0, completed=0; let prev=-1; const gc=[];
+      while (completed < n) {
+        let idx=-1, mn=1e9;
+        for (let i=0;i<n;i++) if (procs[i].at<=time && procs[i].rem>0) { if (procs[i].rem < mn) { mn = procs[i].rem; idx=i; } }
+        if (idx==-1) { time++; continue; }
+        if (prev !== procs[idx].pid) gc.push({pid:procs[idx].pid,start:time,end:time+1}); else gc[gc.length-1].end = time+1;
+        procs[idx].rem--; time++; if (procs[idx].rem==0) { procs[idx].ct=time; procs[idx].tat=procs[idx].ct-procs[idx].at; procs[idx].wt=procs[idx].tat-procs[idx].bt; completed++; }
+        prev = procs[idx].pid;
+      }
+      return {procs,gc};
+    }
+
+    function priority_np(procs) {
+      let time=0, completed=0, n=procs.length; const done=Array(n).fill(false); const gc=[];
+      while (completed<n) {
+        let idx=-1, best=1e9;
+        for (let i=0;i<n;i++) if(!done[i] && procs[i].at<=time) { if (procs[i].pr < best) { best = procs[i].pr; idx=i; } }
+        if (idx==-1) { time++; continue; }
+        const st=time; time+=procs[idx].bt; const ft=time; procs[idx].ct=ft; procs[idx].tat=procs[idx].ct-procs[idx].at; procs[idx].wt=procs[idx].tat-procs[idx].bt; done[idx]=true; completed++; gc.push({pid:procs[idx].pid,start:st,end:ft});
+      }
+      return {procs,gc};
+    }
+
+    function priority_p(procs) {
+      const n=procs.length; procs.forEach(p=>p.rem=p.bt);
+      let time=0, completed=0, prev=-1; const gc=[];
+      while (completed < n) {
+        let idx=-1, best=1e9;
+        for (let i=0;i<n;i++) if (procs[i].at<=time && procs[i].rem>0) { if (procs[i].pr < best) { best=procs[i].pr; idx=i; } }
+        if (idx==-1) { time++; continue; }
+        if (prev !== procs[idx].pid) gc.push({pid:procs[idx].pid,start:time,end:time+1}); else gc[gc.length-1].end = time+1;
+        procs[idx].rem--; time++; if (procs[idx].rem==0) { procs[idx].ct=time; procs[idx].tat=procs[idx].ct-procs[idx].at; procs[idx].wt=procs[idx].tat-procs[idx].bt; completed++; }
+        prev = procs[idx].pid;
+      }
+      return {procs,gc};
+    }
+
+    function rr(procs, tq) {
+      procs.sort((a,b)=> a.at - b.at);
+      const n=procs.length; procs.forEach(p=>p.rem=p.bt);
+      const q=[]; let time=0, idx=0, completed=0; const gc=[];
+      while (completed<n) {
+        while (idx<n && procs[idx].at<=time) { q.push(idx); idx++; }
+        if (q.length==0) { time++; continue; }
+        const id = q.shift(); const st=time; const run = Math.min(tq, procs[id].rem); time+=run; procs[id].rem-=run; gc.push({pid:procs[id].pid,start:st,end:time});
+        while (idx<n && procs[idx].at<=time) { q.push(idx); idx++; }
+        if (procs[id].rem==0) { procs[id].ct=time; procs[id].tat=procs[id].ct-procs[id].at; procs[id].wt=procs[id].tat-procs[id].bt; completed++; } else { q.push(id); }
+      }
+      return {procs,gc};
+    }
+
+    // Run button handler
+    $('#runBtn').addEventListener('click', ()=> {
+      const alg = $('#algorithm').value;
+      let procs = parseTable();
+      if (procs.length === 0) { alert('Add at least one process'); return; }
+      procs = procs.map(p=>({ pid:p.pid, at:p.at, bt:p.bt, pr:p.pr })); // clone
+
+      let res;
+      if (alg === 'fcfs') res = fcfs(procs);
+      else if (alg === 'sjf-np') res = sjf_np(procs);
+      else if (alg === 'srtf') res = srtf(procs);
+      else if (alg === 'priority-np') res = priority_np(procs);
+      else if (alg === 'priority-p') res = priority_p(procs);
+      else if (alg === 'rr') res = rr(procs, Number($('#quantum').value) || 2);
+      else res = fcfs(procs);
+
+      res.procs.sort((a,b)=> a.pid - b.pid);
+      renderGantt(res.gc);
+      renderTable(res.procs);
+
+      // stats & chart
+      const n = res.procs.length;
+      const avgTAT = (res.procs.reduce((s,p)=>s+p.tat,0)/n).toFixed(2);
+      const avgWT = (res.procs.reduce((s,p)=>s+p.wt,0)/n).toFixed(2);
+      const busy = res.gc.reduce((s,g)=> s + (g.end - g.start), 0);
+      const span = Math.max(...res.gc.map(g=>g.end)) - Math.min(...res.gc.map(g=>g.start));
+      const cpuUtil = span === 0 ? 0 : ((busy / span) * 100).toFixed(2);
+
+      $('#avgTAT').textContent = avgTAT;
+      $('#avgWT').textContent = avgWT;
+      $('#cpuUtil').textContent = cpuUtil + '%';
+
+      drawChart(res.procs.map(p=>`P${p.pid}`), res.procs.map(p=>p.tat), res.procs.map(p=>p.wt));
+
+      // CSV
+      $('#downloadBtn').onclick = ()=> {
+        let csv = 'PID,AT,BT,CT,TAT,WT\n';
+        res.procs.forEach(r => csv += `${r.pid},${r.at},${r.bt},${r.ct},${r.tat},${r.wt}\n`);
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'scheduling_output.csv'; a.click();
+        URL.revokeObjectURL(url);
+      };
+    });
+
+    // copy, clear, theme toggle
+    $('#clearOutput').addEventListener('click', ()=> {
+      $('#ganttArea').innerHTML = '';
+      $('#tableArea').innerHTML = '';
+      $('#avgTAT').textContent = '-';
+      $('#avgWT').textContent = '-';
+      $('#cpuUtil').textContent = '-';
+      if (statsChart) statsChart.destroy();
+    });
+
+    $('#copyOutput').addEventListener('click', ()=> {
+      const txt = $('#tableArea').innerText + '\n' + $('#ganttArea').innerText;
+      navigator.clipboard.writeText(txt).then(()=> alert('Copied to clipboard'));
+    });
+
+    $('#themeToggle').addEventListener('click', ()=> document.documentElement.classList.toggle('dark'));
+
+    // initial sample rows
+    addRow(1,0,5,2); addRow(2,1,3,1); addRow(3,2,8,3); addRow(4,3,6,2);
+  </script>
+</body>
+</html>
