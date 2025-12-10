@@ -146,6 +146,10 @@ Program Flow
 
     . Export as PNG
 
+🖼️ Live Preview
+
+Codepen: https://codepen.io/Adi-Satya/pen/myPQpNm
+
 📸 Output Screenshots
 
 CLI Outputs
